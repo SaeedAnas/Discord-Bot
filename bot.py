@@ -20,7 +20,7 @@ async def on_message(message):
     if message.author == client.user:
         return
     
-    names = [' ','aditya','anas','anokhi','anuj','harshil','krish','naman','neil','poorvi','preet','ray','shanjay','shreyes','sreshta','srinidhi']
+    names = ['aditya','anas','anokhi','anuj','harshil','krish','naman','neil','poorvi','preet','ray','shanjay','shreyes','sreshta','srinidhi']
 
     if message.content.startswith('!strike'):
         name = message.content.split(' ')[1]
