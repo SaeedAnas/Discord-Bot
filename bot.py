@@ -34,6 +34,10 @@ def get_user(ctx, uid):
     return user[0]
 
 
+def get_roles(user):
+    return [role.name for role in user.roles][1:]
+
+
 @bot.command(name='registerall', help='logs all users onto spreadsheet')
 @commands.check(is_admin)
 async def init_sheet(ctx):
@@ -90,8 +94,22 @@ async def profile(ctx, user=None):
         if user is None:
             await ctx.send('Please enter a valid user id')
 
+    roles = get_roles(user)
+
     s = StrikeSheet(ctx)
-    embed = discord.Embed()
+    user_cell = s.find_user(f'<@!{user.id}>')
+
+    embed = discord.Embed(title=f'{user.display_name}',
+                          description=', '.join(roles),
+                          colour=user.colour)
+
+    try:
+        embed.add_field(name='strikes', value=s.get_strikes(user_cell))
+    except Exception:
+        print('no strikes available')
+
+    embed.set_thumbnail(url=user.avatar_url)
+    await ctx.send(embed=embed)
 
 
 bot.run(TOKEN)
