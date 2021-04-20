@@ -130,3 +130,6 @@ dmypy.json
 
 # Discord Token
 .env
+
+# Gsheets Token
+service_account.json
