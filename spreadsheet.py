@@ -1,9 +1,5 @@
 import gspread
 
-# strike tracker link: https://docs.google.com/spreadsheets/d/1DVPDeYkLLwjkL2BTBlBRUWsmnpew-z5fjT9T9wMYri0/edit#gid=0
-
-strike_col = 3
-
 
 def get_sheet(name):
     gc = gspread.service_account(filename='./service_account.json')
@@ -41,10 +37,10 @@ class StrikeSheet:
         return self.ws.find(uid).row
 
     def get_strikes(self, user):
-        return int(self.ws.cell(user, strike_col).value)
+        return int(self.ws.cell(user, self.strike_col).value)
 
     def update_strikes(self, user, value):
-        return self.ws.update_cell(user, strike_col, value)
+        return self.ws.update_cell(user, self.strike_col, value)
 
     def get_reason(self, user, strike):
         return self.ws.cell(user, self.reason_col + strike - 1).value
