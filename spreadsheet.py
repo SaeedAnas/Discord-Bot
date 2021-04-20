@@ -15,6 +15,7 @@ class StrikeSheet:
     strike_col = 3
     reason_col = 4
     sheet = 'https://docs.google.com/spreadsheets/d/1DVPDeYkLLwjkL2BTBlBRUWsmnpew-z5fjT9T9wMYri0/edit#gid=0'
+    admin_id = '<@!689626652258467851>'
 
     def __init__(self, ctx):
         self.ws = get_sheet("Strike Tracker")
@@ -56,21 +57,28 @@ class StrikeSheet:
         strikes = self.get_strikes(user) + 1
         if strikes >= 3:
             await self.ctx.send(
-                f"{uid} has been striked 3 times! His fate is now under Krish's control"
+                f"{uid} has been striked 3 times! His fate is now under {self.admin_id}'s control"
             )
+            self.update_strikes(user, strikes)
+            self.update_reason(user, strikes, reason)
             return
         self.update_strikes(user, strikes)
         self.update_reason(user, strikes, reason)
-        await self.ctx.send(f'User: {uid} is striked because: {reason}')
+        await self.ctx.send(
+            f'{self.admin_id}, User: {uid} is striked because: {reason}. Strike count is {self.get_strikes(user)}'
+        )
 
     async def remove_strike(self, uid):
         user = self.find_user(uid)
         strikes = self.get_strikes(user)
-        if strikes <= 1:
+        if strikes < 1:
             await self.ctx.send(f'{uid} has no strikes...')
             return
         self.update_strikes(user, strikes - 1)
         self.update_reason(user, strikes, '')
+        await self.ctx.send(
+            f'{self.admin_id}, User: {uid} has been unstriked. Strike count is {self.get_strikes(user)}'
+        )
 
     async def spreadsheet(self):
         await self.ctx.send(f'{self.sheet}')

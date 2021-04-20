@@ -20,8 +20,18 @@ async def on_ready():
 
 
 async def is_admin(ctx):
-    roles = list(filter(lambda role: role.name == 'Admin', ctx.author.roles))
+    roles = list(filter(lambda role: role.name == 'Leader', ctx.author.roles))
     return len(roles) > 0
+
+
+def get_user(ctx, uid):
+    members = ctx.guild.members
+    user = list(filter(lambda m: f'<@!{m.id}>' == uid, members))
+
+    if len(user) == 0:
+        return None
+
+    return user[0]
 
 
 @bot.command(name='registerall', help='logs all users onto spreadsheet')
@@ -35,10 +45,12 @@ async def init_sheet(ctx):
 @bot.command(name='register', help='register new member')
 @commands.check(is_admin)
 async def register(ctx, uid):
-    members = ctx.guild.members
-    member = filter(lambda m: f'<@!{m.id}>' == uid, members)
+    user = get_user(ctx, uid)
     s = StrikeSheet(ctx)
-    await s.register_member(member[0])
+    try:
+        await s.register_member(user)
+    except Exception:
+        await ctx.send('Please enter a valid user id')
 
 
 @bot.command(name='strike', help='Strikes a user')
@@ -67,6 +79,19 @@ async def unstrike(ctx, uid):
 async def spreadsheet(ctx):
     s = StrikeSheet(ctx)
     await s.spreadsheet()
+
+
+@bot.command(name='profile', help='print profile for user')
+async def profile(ctx, user=None):
+    if user is None:
+        user = ctx.author
+    else:
+        user = get_user(ctx, user)
+        if user is None:
+            await ctx.send('Please enter a valid user id')
+
+    s = StrikeSheet(ctx)
+    embed = discord.Embed()
 
 
 bot.run(TOKEN)
