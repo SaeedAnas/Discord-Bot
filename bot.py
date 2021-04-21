@@ -4,7 +4,11 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+import spreadsheet
 from spreadsheet import StrikeSheet
+
+import tasks
+from tasks import Tasks
 
 load_dotenv('.env')
 
@@ -57,17 +61,31 @@ async def profile(ctx, user=None):
 
     roles = get_roles(user)
 
-    s = StrikeSheet(ctx)
-    user_cell = s.find_user(f'<@!{user.id}>')
+    t = Tasks(ctx)
+    connection = spreadsheet.connect(ctx)
+
+    task_dict = t.get_tasks(user.display_name)
 
     embed = discord.Embed(title=f'{user.display_name}',
                           description=', '.join(roles),
                           colour=user.colour)
 
+    task_dict = await task_dict
+    s = await connection
+
+    user_cell = s.find_user(user.id, has_wrapper=False)
+
     try:
         embed.add_field(name='Strikes', value=s.get_strikes(user_cell))
     except Exception:
         print('no strikes available')
+
+    for task_list in task_dict:
+        task = task_dict[task_list]
+        if len(task) > 0:
+            embed.add_field(name=f'{task_list}:',
+                            value=tasks.format_tasks(task),
+                            inline=False)
 
     embed.set_thumbnail(url=user.avatar_url)
     await ctx.send(embed=embed)
@@ -116,7 +134,7 @@ async def unstrike(ctx, uid):
 
 
 @bot.command(name='spreadsheet', help='gives link to spreadsheet')
-async def spreadsheet(ctx):
+async def sheet(ctx):
     s = StrikeSheet(ctx)
     await s.spreadsheet()
 

@@ -1,6 +1,10 @@
 import gspread
 
 
+async def connect(ctx):
+    return StrikeSheet(ctx)
+
+
 def get_sheet(name):
     gc = gspread.service_account(filename='./service_account.json')
     sh = gc.open(name)
@@ -33,7 +37,9 @@ class StrikeSheet:
         for member in members:
             await self.register_member(member)
 
-    def find_user(self, uid):
+    def find_user(self, uid, has_wrapper=True):
+        if not has_wrapper:
+            uid = f'<@!{uid}>'
         return self.ws.find(uid).row
 
     def get_strikes(self, user):
