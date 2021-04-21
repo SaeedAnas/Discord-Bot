@@ -83,7 +83,7 @@ async def profile(ctx, user=None):
     for task_list in task_dict:
         task = task_dict[task_list]
         if len(task) > 0:
-            embed.add_field(name=f'{task_list}:',
+            embed.add_field(name=f'{task_list}:\n',
                             value=tasks.format_tasks(task),
                             inline=False)
 

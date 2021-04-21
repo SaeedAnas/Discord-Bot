@@ -18,7 +18,8 @@ def isOverdue(time):
 
 
 def format_card(card):
-    return f'- {card.get("name")} :: {date(card.get("due")).strftime("%m/%d/%y")}'
+    # return f'● [{card.get("name")}]({card.get("url")})\n  Due: {date(card.get("due")).strftime("%m-%d-%y at %H:%M%p")}'
+    return f'● [{card.get("name")}]({card.get("url")})'
 
 
 def format_tasks(cards):
