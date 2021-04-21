@@ -1,14 +1,14 @@
 import os
 
 import discord
-from discord.ext import commands
+from discord.ext import tasks, commands
 from dotenv import load_dotenv
 
 import spreadsheet
 from spreadsheet import StrikeSheet
 
-import tasks
-from tasks import Tasks
+import cards
+from cards import Tasks
 
 load_dotenv('.env')
 
@@ -22,6 +22,8 @@ bot = commands.Bot(command_prefix=command_prefix,
                    intents=intents,
                    help_command=help_command)
 
+main_guild = 'Inspire Speaker Series'
+
 
 # Utility Functions
 async def is_admin(ctx):
@@ -34,6 +36,12 @@ def get_user(ctx, uid):
     user = list(filter(lambda m: f'<@!{m.id}>' == uid, members))
 
     if len(user) == 0:
+        user = list(
+            filter(
+                lambda m: m.display_name.split(' ')[0].lower() == uid.lower(),
+                members))
+
+    if len(user) == 0:
         return None
 
     return user[0]
@@ -43,10 +51,19 @@ def get_roles(user):
     return [role.name for role in user.roles][1:]
 
 
-# All bot event handlers and commands
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
+def find_role(name, guild):
+    return list(filter(lambda r: r.name.lower() == name.lower(),
+                       guild.roles))[0]
+
+
+def get_guild(name):
+    return list(filter(lambda g: g.name == name, bot.guilds))[0]
+
+
+def get_channel(name, guild):
+    return list(
+        filter(lambda c: c.name.lower() == name.replace(' ', '-').lower(),
+               guild.channels))[0]
 
 
 # General
@@ -61,8 +78,8 @@ async def profile(ctx, user=None):
 
     roles = get_roles(user)
 
-    t = Tasks(ctx)
     connection = spreadsheet.connect(ctx)
+    t = Tasks()
 
     task_dict = t.get_tasks(user.display_name)
 
@@ -84,11 +101,29 @@ async def profile(ctx, user=None):
         task = task_dict[task_list]
         if len(task) > 0:
             embed.add_field(name=f'{task_list}:\n',
-                            value=tasks.format_tasks(task),
+                            value=cards.format_tasks(task),
                             inline=False)
 
     embed.set_thumbnail(url=user.avatar_url)
     await ctx.send(embed=embed)
+
+
+@bot.command(name='drive', help='gives link to google drive folder')
+async def drive(ctx):
+    await ctx.send(
+        'https://drive.google.com/drive/u/0/folders/1bZdKIoGCg5gn_tvByUMOpmIWyYrXE94R'
+    )
+
+
+@bot.command(name='notify', help='manually call notify function')
+async def notify():
+    guild = get_guild(main_guild)
+    t = Tasks()
+    important = await t.get_important()
+    for branch in important:
+        role = find_role(branch, guild)
+        channel = get_channel(branch, guild)
+        await t.notify_channel(role, channel, important[branch])
 
 
 # Strikesheet
@@ -137,6 +172,20 @@ async def unstrike(ctx, uid):
 async def sheet(ctx):
     s = StrikeSheet(ctx)
     await s.spreadsheet()
+
+
+# Tasks
+@tasks.loop(hours=1)
+async def notify_tasks():
+    if cards.isMidnight():
+        await notify()
+
+
+# All bot event handlers and commands
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
+    notify_tasks.start()
 
 
 bot.run(TOKEN)
