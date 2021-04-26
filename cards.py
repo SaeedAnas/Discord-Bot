@@ -1,48 +1,29 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from trello import TrelloClient
 import discord
 
-from pytz import timezone, utc
+import bot_utils
 
 
 async def connect():
     return Tasks()
 
 
-def isMidnight():
-    date = get_pst()
-    return date.hour == 14
-
-
-def to_date(time):
-    return datetime.strptime(
-        time, "%Y-%m-%dT%H:%M:%S.000Z").astimezone(tz=utc) - timedelta(hours=7)
-
-
-def get_utc_time():
-    date = datetime.now(tz=utc)
-    return date
-
-
-def get_pst():
-    return get_utc_time().astimezone(timezone('US/Pacific'))
-
-
-def to_pst(time):
-    return to_date(time).astimezone(
-        timezone('US/Pacific')).strftime("%m-%d-%y at %H:%M%p")
+def isHour(hour):
+    date = bot_utils.get_pst()
+    return date.hour == hour
 
 
 def isOverdue(time):
-    due = to_date(time)
-    present = get_utc_time()
+    due = bot_utils.to_pst(time)
+    present = bot_utils.get_pst()
     return due.date() < present.date()
 
 
 def isApproaching(time):
-    due = to_date(time) - timedelta(hours=36)
-    present = get_utc_time()
+    due = bot_utils.to_date(time) - timedelta(hours=36)
+    present = bot_utils.get_utc_time()
     return present.date() >= due.date()
 
 
@@ -53,16 +34,16 @@ def isCompleted(card):
 def format_card(card, dict):
     if dict:
         try:
-            date = to_pst(card.get("due"))
-            return f'● [{card.get("name")}]({card.get("url")})\n  Due: {date}'
+            date = bot_utils.format_pst(card.get("due"))
+            return f'● [{card.get("name")}]({card.get("url")})\n  Due {date}'
         except Exception:
             return f'● [{card.get("name")}]({card.get("url")})'
-    date = to_pst(card.due)
-    return f'● [{card.name}]({card.url})\n  Due: {date}'
+    date = bot_utils.format_pst(card.due)
+    return f'● [{card.name}]({card.url})\n  Due {date}'
 
 
 def print_card(card):
-    d = to_pst(card.due)
+    d = bot_utils.format_pst(card.due)
     print(f'● [{card.name}]({card.url})\n Due: {d}')
 
 
@@ -168,8 +149,8 @@ class Tasks:
 
     async def get_important(self):
         cards = self.get_cards()
-        approaching = await self.get_approaching_tasks(cards=cards)
         overdue = await self.get_overdue_tasks(cards=cards)
+        approaching = await self.get_approaching_tasks(cards=cards)
 
         tasks = {}
         add_cards('a', approaching, tasks)
@@ -177,16 +158,21 @@ class Tasks:
 
         return tasks
 
-    async def notify_channel(self, role, channel, tasks):
-        await channel.send(f'<@&{role.id}>')
+    async def notify_channel(self, role, channel, tasks, ping):
+        if ping:
+            await channel.send(f'<@&{role.id}>')
         embed = discord.Embed(title='You have tasks that are:',
                               colour=role.colour)
 
         if len(tasks['o']) > 0:
             o = format_tasks(tasks['o'], dict=False)
-            embed.add_field(name=f'{self.warning} Overdue', value=o)
+            embed.add_field(name=f'{self.warning} Overdue',
+                            value=o,
+                            inline=False)
         if len(tasks['a']) > 0:
             a = format_tasks(tasks['a'], dict=False)
-            embed.add_field(name=f'{self.todo} Approaching', value=a)
+            embed.add_field(name=f'{self.todo} Approaching',
+                            value=a,
+                            inline=False)
 
         await channel.send(embed=embed)

@@ -1,4 +1,5 @@
 import gspread
+import bot_utils
 
 
 async def connect(ctx):
@@ -9,6 +10,65 @@ def get_sheet(name):
     gc = gspread.service_account(filename='./service_account.json')
     sh = gc.open(name)
     return sh.sheet1
+
+
+class Meeting:
+    def __init__(self, t):
+        time = t.split('@')
+        self.time = bot_utils.parse_time(time[0])
+        if len(time) > 1:
+            self.place = time[1].strip()
+        else:
+            self.place = None
+
+    def __lt__(self, other):
+        return self.time < other.time
+
+    def format(self):
+        if self.place is None:
+            return f'{bot_utils.format_meeting_time(self.time)}'
+        return f'{bot_utils.format_meeting_time(self.time)} @ {self.place}'
+
+
+class MeetingSheet:
+    sheet = 'https://docs.google.com/spreadsheets/d/15Kv7cDgJP-SWTcWPcBVcgW4KpBc7U2p0EWbBwSQz1EA/edit?usp=sharing'
+
+    def __init__(self, ctx):
+        self.ws = get_sheet('Meeting Sheet')
+        self.ctx = ctx
+
+    def get_branch(self, name):
+        return self.ws.find(name).row
+
+    def get_branch_times(self, name):
+        return self.ws.row_values(self.get_branch(name))
+
+    async def get_times(self):
+        return self.ws.get_all_values()
+
+    def to_meetings(self, dates, sort=True):
+        times = [Meeting(d) for d in dates]
+        if not sort:
+            return times
+        return sorted(times)
+
+    def get_sorted_times(self, name):
+        return self.to_meetings(self.get_branch_times(name)[1:])
+
+    async def add_time(self, name, time):
+        branch = self.get_branch(name)
+        branch_times = self.get_branch_times(name)
+        time = time.format()
+        length = list(filter(lambda t: t == time, branch_times))
+        if len(length) > 0:
+            raise Exception('Time already scheduled')
+        self.ws.update_cell(branch, len(branch_times) + 1, time)
+
+    def clear_cell(self, row, col):
+        self.ws.update_cell(row, col, '')
+
+    async def spreadsheet(self):
+        await self.ctx.send(f'{self.sheet}')
 
 
 class StrikeSheet:
